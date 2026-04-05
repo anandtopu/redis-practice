@@ -1,0 +1,40 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: redis-usage-worker
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:app}
+    username: ${DB_USER:app}
+    password: ${DB_PASSWORD:app}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+app:
+  redis:
+    stream:
+      orders: orders.stream
+      consumerGroup: orders.cg
+      consumerName: worker-1
+      jobs: jobs.stream
+      jobsConsumerGroup: jobs.cg
+      jobsConsumerName: jobs-worker-1
+
+    retry:
+      queue: retry:queue
+      dlq: retry:dlq
