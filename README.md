@@ -1,26 +1,64 @@
-# redis-usage
+# redis-practice
 
-Local Redis + Postgres + Spring Boot (API + Worker) examples for common system-design Redis patterns.
+Local **Redis + Postgres + Spring Boot** (API + Worker) playground that demonstrates common Redis-backed system design patterns end-to-end.
+
+This repo is intentionally practical:
+
+- **API service** exposes HTTP endpoints that implement patterns like cache-aside, rate limiting, locks, idempotency, streams, pub/sub, sorted-set leaderboards, delayed retries, and job status tracking.
+- **Worker service** consumes Redis Streams / scheduled work to show background processing.
+- **Postgres** stores the “source of truth” entities (e.g., products/orders), while Redis is used for performance + distributed coordination.
+
+The fastest way to use this project is with **Docker Compose** (Redis, RedisInsight, Postgres, API, Worker).
+
+## Project layout
+
+- **`api/`**
+  - Spring Boot HTTP API (port `8080`)
+- **`worker/`**
+  - Spring Boot background worker + actuator (port `8081`)
+- **`common/`**
+  - Shared classes/config used by both services
+- **`Docs/`**
+  - Step-by-step docs per demo/pattern
+- **`docker-compose.yml`**
+  - Local stack (Redis + Postgres + API + Worker + RedisInsight)
+- **`Redis_knowledge.md`**
+  - Notes/learning material about Redis concepts
 
 ## Docs
 
-- `Docs/demo-01-cache-aside.md`
-- `Docs/demo-02-rate-limiting.md`
-- `Docs/demo-03-idempotency.md`
-- `Docs/demo-04-distributed-lock.md`
-- `Docs/demo-05-distributed-semaphore.md`
-- `Docs/demo-06-job-status-tracking.md`
-- `Docs/demo-07-pubsub.md`
-- `Docs/demo-08-streams.md`
-- `Docs/demo-09-sorted-sets-leaderboard.md`
-- `Docs/demo-10-retry-scheduler.md`
-- `Docs/troubleshooting-redis-cli.md`
+- [`Docs/demo-01-cache-aside.md`](Docs/demo-01-cache-aside.md)
+- [`Docs/demo-02-rate-limiting.md`](Docs/demo-02-rate-limiting.md)
+- [`Docs/demo-03-idempotency.md`](Docs/demo-03-idempotency.md)
+- [`Docs/demo-04-distributed-lock.md`](Docs/demo-04-distributed-lock.md)
+- [`Docs/demo-05-distributed-semaphore.md`](Docs/demo-05-distributed-semaphore.md)
+- [`Docs/demo-06-job-status-tracking.md`](Docs/demo-06-job-status-tracking.md)
+- [`Docs/demo-07-pubsub.md`](Docs/demo-07-pubsub.md)
+- [`Docs/demo-08-streams.md`](Docs/demo-08-streams.md)
+- [`Docs/demo-09-sorted-sets-leaderboard.md`](Docs/demo-09-sorted-sets-leaderboard.md)
+- [`Docs/demo-10-retry-scheduler.md`](Docs/demo-10-retry-scheduler.md)
+- [`Docs/troubleshooting-redis-cli.md`](Docs/troubleshooting-redis-cli.md)
+
+## What you’ll learn here (patterns)
+
+- **Caching**: cache-aside, TTLs, invalidation on write
+- **Rate limiting**: fixed window, token bucket (per IP/user/tenant)
+- **Distributed coordination**: locks and semaphores
+- **Messaging**: Pub/Sub and Streams
+- **Reliability**: idempotency keys, retries with delayed scheduling
+- **Async workflows**: job status tracking + polling
+- **Ranking/leaderboards**: Sorted Sets
 
 ## Prereqs
 
 - Docker Desktop
 
-## Start/Stop
+Optional (only if you want to run services outside Docker):
+
+- Java `21`
+- Maven `3.9+`
+
+## Quickstart (recommended): Docker Compose
 
 Start everything:
 
@@ -36,7 +74,91 @@ docker compose down
 
 - API: http://localhost:8080
 - Worker (actuator metrics): http://localhost:8081
-- RedisInsight UI: http://localhost:5540 (add Redis at host `redis`, port `6379` inside the docker network; from your host you can also connect to `localhost:6379`)
+- RedisInsight UI: http://localhost:5540
+  - Inside the docker network, Redis host is `redis` and port is `6379`
+  - From your host machine, you can connect to `localhost:6379`
+
+### Containers and ports
+
+- **Redis**: `6379`
+- **Postgres**: `5432` (db/user/password all `app` in docker compose)
+- **API**: `8080`
+- **Worker**: `8081`
+- **RedisInsight**: `5540`
+
+## Configuration
+
+When running in Docker, the services are configured via environment variables in `docker-compose.yml`.
+
+- **`SPRING_PROFILES_ACTIVE`**: `docker`
+- **`DB_HOST`**: `postgres`
+- **`DB_PORT`**: `5432`
+- **`DB_NAME`**: `app`
+- **`DB_USER`**: `app`
+- **`DB_PASSWORD`**: `app`
+- **`REDIS_HOST`**: `redis`
+- **`REDIS_PORT`**: `6379`
+
+## Running without Docker (optional)
+
+If you prefer to run the Spring Boot apps on your host machine:
+
+1. Start Redis and Postgres yourself (or start only infra from compose).
+2. Export the same env vars shown above, but use `localhost` for hosts.
+3. Run the services via Maven.
+
+### Option A: Start only Redis + Postgres via Docker
+
+```bash
+docker compose up redis postgres redisinsight
+```
+
+Then run the apps locally (in separate terminals):
+
+```bash
+mvn -pl api spring-boot:run
+```
+
+```bash
+mvn -pl worker spring-boot:run
+```
+
+### Option B: Build jars
+
+```bash
+mvn -DskipTests package
+```
+
+Then run:
+
+```bash
+java -jar api/target/api-*.jar
+```
+
+```bash
+java -jar worker/target/worker-*.jar
+```
+
+## Handy commands
+
+Tail logs:
+
+```bash
+docker compose logs --tail=200 api
+docker compose logs --tail=200 worker
+```
+
+Open a Redis CLI inside the Redis container:
+
+```bash
+docker exec -it redis-usage-redis redis-cli
+```
+
+Reset local state (removes Redis/Postgres volumes):
+
+```bash
+docker compose down -v
+```
 
 ## Runbook (verify each Redis pattern)
 
